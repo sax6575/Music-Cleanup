@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "music-cleanup"
+version = "0.1.0"
+description = "CLI tool to catalog and organize offline music libraries"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  {name = "Music Cleanup Contributors"}
+]
+dependencies = [
+  "mutagen>=1.47.0",
+  "musicbrainzngs>=0.7.1"
+]
+
+[project.scripts]
+music-cleanup = "music_cleanup.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

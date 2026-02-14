@@ -1,0 +1,2 @@
+[console_scripts]
+music-cleanup = music_cleanup.cli:main

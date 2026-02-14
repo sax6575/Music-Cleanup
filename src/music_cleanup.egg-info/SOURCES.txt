@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/music_cleanup/__init__.py
+src/music_cleanup/cli.py
+src/music_cleanup/enrichment.py
+src/music_cleanup/exporters.py
+src/music_cleanup/metadata.py
+src/music_cleanup/metrics.py
+src/music_cleanup/models.py
+src/music_cleanup/organizer.py
+src/music_cleanup/scanner.py
+src/music_cleanup.egg-info/PKG-INFO
+src/music_cleanup.egg-info/SOURCES.txt
+src/music_cleanup.egg-info/dependency_links.txt
+src/music_cleanup.egg-info/entry_points.txt
+src/music_cleanup.egg-info/requires.txt
+src/music_cleanup.egg-info/top_level.txt
