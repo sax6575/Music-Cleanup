@@ -88,13 +88,13 @@ music-cleanup "/path/to/music" --organize --apply --copy --dest-root "/path/to/o
 - `--verbose`: print per-file progress
 
 ## Project structure
-- `/Users/joshsachs/Desktop/Music Cleanup/src/music_cleanup/cli.py`
-- `/Users/joshsachs/Desktop/Music Cleanup/src/music_cleanup/scanner.py`
-- `/Users/joshsachs/Desktop/Music Cleanup/src/music_cleanup/metadata.py`
-- `/Users/joshsachs/Desktop/Music Cleanup/src/music_cleanup/enrichment.py`
-- `/Users/joshsachs/Desktop/Music Cleanup/src/music_cleanup/metrics.py`
-- `/Users/joshsachs/Desktop/Music Cleanup/src/music_cleanup/exporters.py`
-- `/Users/joshsachs/Desktop/Music Cleanup/src/music_cleanup/organizer.py`
+- `src/music_cleanup/cli.py`
+- `src/music_cleanup/scanner.py`
+- `src/music_cleanup/metadata.py`
+- `src/music_cleanup/enrichment.py`
+- `src/music_cleanup/metrics.py`
+- `src/music_cleanup/exporters.py`
+- `src/music_cleanup/organizer.py`
 
 ## Roadmap (next iterations)
 1. Metadata correctness engine
