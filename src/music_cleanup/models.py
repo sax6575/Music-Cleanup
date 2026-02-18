@@ -29,3 +29,17 @@ class LibraryMetrics:
     total_size_bytes: int
     unique_artists: int
     unique_albums: int
+
+
+@dataclass
+class ScanResult:
+    records: list[TrackRecord]
+    warnings: list[str]
+
+
+@dataclass
+class OrganizeResult:
+    moved: int
+    skipped: int
+    sidecar_moved: int
+    warnings: list[str]

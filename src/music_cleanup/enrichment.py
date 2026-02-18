@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from .metadata import normalized_album, normalized_artist, normalized_title, write_audio_tags
 from .models import TrackRecord
@@ -77,6 +77,7 @@ def enrich_with_musicbrainz(
     sleep_seconds: float = 1.1,
     write_tags: bool = False,
     verbose: bool = False,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> tuple[int, int, int, int]:
     if musicbrainzngs is None:
         raise RuntimeError("musicbrainzngs is not installed. Run: pip install musicbrainzngs")
@@ -88,9 +89,12 @@ def enrich_with_musicbrainz(
     checked = 0
     tags_written = 0
 
-    for record in records:
-        if not _needs_enrichment(record, missing_only=missing_only):
-            continue
+    candidates = [record for record in records if _needs_enrichment(record, missing_only=missing_only)]
+    total_candidates = len(candidates)
+    if progress_callback:
+        progress_callback(0, total_candidates)
+
+    for idx, record in enumerate(candidates, start=1):
 
         checked += 1
 
@@ -99,6 +103,8 @@ def enrich_with_musicbrainz(
 
         if not query_title:
             unmatched += 1
+            if progress_callback:
+                progress_callback(idx, total_candidates)
             continue
 
         try:
@@ -112,6 +118,8 @@ def enrich_with_musicbrainz(
                 print(f"[enrich] query failed for {record.relative_path}: {exc}")
             unmatched += 1
             time.sleep(sleep_seconds)
+            if progress_callback:
+                progress_callback(idx, total_candidates)
             continue
 
         recordings = response.get("recording-list", [])
@@ -119,6 +127,8 @@ def enrich_with_musicbrainz(
         if not candidate:
             unmatched += 1
             time.sleep(sleep_seconds)
+            if progress_callback:
+                progress_callback(idx, total_candidates)
             continue
 
         score = _result_score(candidate)
@@ -127,6 +137,8 @@ def enrich_with_musicbrainz(
             if verbose:
                 print(f"[enrich] low score {score} for {record.relative_path}")
             time.sleep(sleep_seconds)
+            if progress_callback:
+                progress_callback(idx, total_candidates)
             continue
 
         new_artist = normalized_artist(_artist_name(candidate) or record.artist)
@@ -168,5 +180,7 @@ def enrich_with_musicbrainz(
                     tags_written += 1
 
         time.sleep(sleep_seconds)
+        if progress_callback:
+            progress_callback(idx, total_candidates)
 
     return checked, updated, unmatched, tags_written

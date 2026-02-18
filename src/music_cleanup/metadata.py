@@ -23,6 +23,9 @@ AUDIO_EXTENSIONS = {
 
 
 def is_audio_file(path: Path) -> bool:
+    # macOS AppleDouble sidecar files (._*) are metadata blobs, not audio.
+    if path.name.startswith("._"):
+        return False
     return path.is_file() and path.suffix.lower() in AUDIO_EXTENSIONS
 
 
@@ -67,7 +70,21 @@ def read_audio_info(path: Path) -> dict[str, object]:
             "metadata_source": "none-no-mutagen",
         }
 
-    audio = File(path, easy=True)
+    try:
+        audio = File(path, easy=True)
+    except Exception:
+        return {
+            "artist": "",
+            "album": "",
+            "title": path.stem,
+            "track_number": "",
+            "year": "",
+            "genre": "",
+            "duration_seconds": None,
+            "bitrate_kbps": None,
+            "sample_rate_hz": None,
+            "metadata_source": "none-invalid",
+        }
     if audio is None:
         return {
             "artist": "",

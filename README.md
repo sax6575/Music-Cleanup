@@ -71,11 +71,17 @@ music-cleanup "/path/to/music" --organize --apply --dest-root "/path/to/organize
 music-cleanup "/path/to/music" --organize --apply --copy --dest-root "/path/to/organized/library"
 ```
 
+### Move sidecar files only (fast pass)
+```bash
+music-cleanup "/path/to/music" --organize-sidecars-only --apply --dest-root "/path/to/organized/library"
+```
+
 ## CLI flags
 - `root`: top-level directory to scan
 - `--output-dir`: output folder for catalog files (default: `./output`)
 - `--export {csv,sqlite,both}`
 - `--organize`: enable organization pass
+- `--organize-sidecars-only`: only move/copy sidecar files (artwork/metadata) into existing organized folders
 - `--dest-root`: destination root for organized structure (default: input root)
 - `--apply`: execute file operations (otherwise dry-run)
 - `--copy`: copy files instead of moving

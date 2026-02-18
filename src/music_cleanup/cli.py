@@ -1,13 +1,44 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
+from typing import Callable
 
 from .enrichment import enrich_with_musicbrainz
 from .exporters import export_metrics_csv, export_sqlite, export_tracks_csv
 from .metrics import human_size, summarize
-from .organizer import organize_files
+from .organizer import organize_files, organize_sidecar_files
 from .scanner import scan_music
+
+
+def _make_progress_printer(stage: str) -> Callable[[int, int], None]:
+    is_tty = sys.stdout.isatty()
+    last_percent = -1
+
+    def _report(current: int, total: int) -> None:
+        nonlocal last_percent
+        percent = 100 if total <= 0 else int((current / total) * 100)
+        percent = max(0, min(100, percent))
+
+        if is_tty:
+            if percent == last_percent and current < total:
+                return
+            end = "\n" if current >= total else ""
+            print(f"\r[{stage}] {percent:3d}% ({current}/{total})", end=end, flush=True)
+            last_percent = percent
+            return
+
+        should_print = (
+            last_percent < 0
+            or current >= total
+            or percent >= last_percent + 10
+        )
+        if should_print:
+            print(f"[{stage}] {percent:3d}% ({current}/{total})")
+            last_percent = percent
+
+    return _report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -32,6 +63,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--organize",
         action="store_true",
         help="Organize files into Artist/Album structure",
+    )
+    parser.add_argument(
+        "--organize-sidecars-only",
+        action="store_true",
+        help="Only move/copy sidecar files (artwork/metadata) into existing organized folders",
     )
     parser.add_argument(
         "--dest-root",
@@ -100,8 +136,38 @@ def main() -> None:
     if not root.exists() or not root.is_dir():
         raise SystemExit(f"Root directory does not exist or is not a directory: {root}")
 
+    if args.organize_sidecars_only:
+        destination_root = (args.dest_root or root).expanduser().resolve()
+        print(f"[sidecar] source root: {root}")
+        print(f"[sidecar] destination root: {destination_root}")
+        if args.enrich_musicbrainz:
+            raise SystemExit("--organize-sidecars-only cannot be used with --enrich-musicbrainz")
+        if not args.apply:
+            print("[sidecar] dry-run mode enabled (pass --apply to execute)")
+        sidecar_result = organize_sidecar_files(
+            root=root,
+            destination_root=destination_root,
+            dry_run=not args.apply,
+            copy_instead_of_move=args.copy,
+            verbose=args.verbose,
+            progress_callback=_make_progress_printer("sidecar"),
+        )
+        print(f"[sidecar] sidecar files moved/copied: {sidecar_result.sidecar_moved}")
+        if sidecar_result.warnings:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            warnings_path = output_dir / "organize_warnings.log"
+            warnings_path.write_text("\n".join(sidecar_result.warnings) + "\n", encoding="utf-8")
+            print(f"[warn] organize warnings: {len(sidecar_result.warnings)}")
+            print(f"[warn] details written: {warnings_path}")
+        return
+
     print(f"[start] scanning: {root}")
-    records = scan_music(root, verbose=args.verbose)
+    scan_result = scan_music(
+        root,
+        verbose=args.verbose,
+        progress_callback=_make_progress_printer("scan"),
+    )
+    records = scan_result.records
 
     if args.enrich_musicbrainz:
         print("[enrich] running MusicBrainz enrichment pass")
@@ -116,6 +182,7 @@ def main() -> None:
                 sleep_seconds=args.musicbrainz_sleep_seconds,
                 write_tags=args.write_tags,
                 verbose=args.verbose,
+                progress_callback=_make_progress_printer("enrich"),
             )
         except RuntimeError as exc:
             raise SystemExit(str(exc))
@@ -138,6 +205,12 @@ def main() -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    if scan_result.warnings:
+        warnings_path = output_dir / "scan_warnings.log"
+        warnings_path.write_text("\n".join(scan_result.warnings) + "\n", encoding="utf-8")
+        print(f"[warn] scan warnings: {len(scan_result.warnings)}")
+        print(f"[warn] details written: {warnings_path}")
+
     if args.export in {"csv", "both"}:
         tracks_csv = output_dir / "tracks_catalog.csv"
         metrics_csv = output_dir / "library_metrics.csv"
@@ -156,15 +229,22 @@ def main() -> None:
         print(f"[organize] destination root: {destination_root}")
         if not args.apply:
             print("[organize] dry-run mode enabled (pass --apply to execute)")
-        moved, skipped = organize_files(
+        organize_result = organize_files(
             records,
             destination_root,
             dry_run=not args.apply,
             copy_instead_of_move=args.copy,
             verbose=args.verbose,
+            progress_callback=_make_progress_printer("organize"),
         )
-        print(f"[organize] planned/performed file operations: {moved}")
-        print(f"[organize] skipped (already in place): {skipped}")
+        print(f"[organize] planned/performed file operations: {organize_result.moved}")
+        print(f"[organize] skipped (already in place): {organize_result.skipped}")
+        print(f"[organize] sidecar files moved/copied: {organize_result.sidecar_moved}")
+        if organize_result.warnings:
+            warnings_path = output_dir / "organize_warnings.log"
+            warnings_path.write_text("\n".join(organize_result.warnings) + "\n", encoding="utf-8")
+            print(f"[warn] organize warnings: {len(organize_result.warnings)}")
+            print(f"[warn] details written: {warnings_path}")
 
 
 if __name__ == "__main__":
